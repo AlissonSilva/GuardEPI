@@ -14,25 +14,34 @@ class EPIDetector:
         self.labels = []
 
     def preprocess_data(self):
-        datagen = ImageDataGenerator(validation_split=0.2, rescale=1./255)
+        datagen = ImageDataGenerator(rescale=1./255)
 
         self.train_data = datagen.flow_from_directory(
-            self.dataset_dir,
+            os.path.join(self.dataset_dir, 'train'),
             target_size=(self.img_size, self.img_size),
             batch_size=self.batch_size,
             class_mode='categorical',
-            subset='training'
+            shuffle=True
         )
 
         self.val_data = datagen.flow_from_directory(
-            self.dataset_dir,
+            os.path.join(self.dataset_dir, 'val'),
             target_size=(self.img_size, self.img_size),
             batch_size=self.batch_size,
             class_mode='categorical',
-            subset='validation'
+            shuffle=False
+        )
+
+        self.test_data = datagen.flow_from_directory(
+            os.path.join(self.dataset_dir, 'test'),
+            target_size=(self.img_size, self.img_size),
+            batch_size=self.batch_size,
+            class_mode='categorical',
+            shuffle=False
         )
 
         self.labels = list(self.train_data.class_indices.keys())
+
 
     def build_model(self):
         self.model = tf.keras.models.Sequential([
@@ -53,6 +62,11 @@ class EPIDetector:
         print("[INFO] Iniciando o treinamento...")
         self.model.fit(self.train_data, validation_data=self.val_data, epochs=self.epochs)
         print("[INFO] Treinamento finalizado.")
+    
+    def evaluate(self):
+        if self.test_data:
+            loss, acc = self.model.evaluate(self.test_data)
+            print(f"[INFO] Acurácia no conjunto de teste: {acc:.2f}")
 
     def save_model(self, model_path='modelo_epi.h5'):
         self.model.save(model_path)
